@@ -1,0 +1,3 @@
+nasm -f bin granTrakTEC.asm -o granTrakTEC.bin
+qemu-system-x86_64 -drive format=raw,file=granTrakTEC.bin
+
