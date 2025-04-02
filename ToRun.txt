@@ -1,3 +1,4 @@
-nasm -f bin granTrakTEC.asm -o granTrakTEC.bin
-qemu-system-x86_64 -drive format=raw,file=granTrakTEC.bin
-
+nasm -f bin granTrakTEC_Main.asm -o granTrakTEC_Main.bin
+nasm -f bin granTrakTEC_Extended.asm -o granTrakTEC_Extended.bin
+cat granTrakTEC_Main.bin granTrakTEC_Extended.bin > granTrakTEC.img
+qemu-system-x86_64   -drive format=raw,file=granTrakTEC.img,index=0,if=floppy   -display sdl   -monitor stdio

@@ -1,59 +1,92 @@
-org 0x7C00
-bits 16
+[bits 16]
 
-start:
-    mov ax, 0x0013      ; Modo VGA 320x200
+main:
+    push cs
+    pop ds 
+
+    ; Cambiar a modo gráfico
+    mov ax, 0x0013
     int 0x10
-    
-    ; Posiciones iniciales (ajustadas para 6x6)
+
+    ; Configurar segmento de video (ES = 0xA000)
+    mov ax, 0xA000
+    mov es, ax
+
+    ; Posiciones iniciales
     mov word [bot1_x], 20
-    mov word [bot1_y], 97
+    mov word [bot1_y], 100
     mov word [bot2_x], 38
     mov word [bot2_y], 100
     mov word [bot3_x], 56
-    mov word [bot3_y], 97
+    mov word [bot3_y], 100
     
     ; Índices iniciales
     mov word [bot1_index], 0
     mov word [bot2_index], 0
     mov word [bot3_index], 0
 
+    call game_loop
+
 game_loop:
-    call limpiar_pantalla
-    
-    ; === Mover Bot 1 ===
+
+    call refresh
+
+    ; Pixeles para control visual de los puntos de control en pantalla
+    mov di, 100      ; Y
+    imul di, 320     ; Y * 320
+    add di, 38       ; + X
+    mov byte [es:di], 4
+
+    mov di, 100      ; Y
+    imul di, 320     ; Y * 320
+    add di, 300       ; + X
+    mov byte [es:di], 4
+
+    mov di, 175      ; Y
+    imul di, 320     ; Y * 320
+    add di, 300       ; + X
+    mov byte [es:di], 4
+
+    mov di, 175      ; Y
+    imul di, 320     ; Y * 320
+    add di, 38       ; + X
+    mov byte [es:di], 4
+
+    call draw_Map
+
+    ; Mover Bot 1
     mov si, bot1_waypoints_x
     mov di, bot1_waypoints_y
     mov bx, bot1_index
     mov cx, [bot1_x]
     mov dx, [bot1_y]
-    mov ax, 5           ; Velocidad
+    mov ax, 3
     call mover_bot
     mov [bot1_x], cx
     mov [bot1_y], dx
     
-    ; === Mover Bot 2 ===
+    ; Mover Bot 2
     mov si, bot2_waypoints_x
     mov di, bot2_waypoints_y
     mov bx, bot2_index
     mov cx, [bot2_x]
     mov dx, [bot2_y]
-    mov ax, 1           ; Velocidad
+    mov ax, 2
     call mover_bot
     mov [bot2_x], cx
     mov [bot2_y], dx
     
-    ; === Mover Bot 3 ===
+    ; Mover Bot 3
     mov si, bot3_waypoints_x
     mov di, bot3_waypoints_y
     mov bx, bot3_index
     mov cx, [bot3_x]
     mov dx, [bot3_y]
-    mov ax, 3           ; Velocidad
+    mov ax, 1
     call mover_bot
     mov [bot3_x], cx
     mov [bot3_y], dx
-    
+
     ; Dibujar bots
     mov cx, [bot1_x]
     mov dx, [bot1_y]
@@ -66,27 +99,30 @@ game_loop:
     mov cx, [bot3_x]
     mov dx, [bot3_y]
     call dibujar_bot
-    
+
     call delay
-    call check_tecla
+
     jz game_loop
 
-exit:
-    mov ax, 0x0003      ; Modo texto
-    int 0x10
-    cli
-    hlt
-
-; --- Funciones ---
-limpiar_pantalla:
+refresh:
     mov ax, 0xA000
     mov es, ax
     xor di, di
     mov cx, 320*200
     xor al, al
     rep stosb
+    ret   
+
+draw_Map:
+; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
+    mov di, 0      ; Y
+    imul di, 320     ; Y * 320
+    add di, 0       ; + X
+    mov byte [es:di], 4
+
     ret
 
+; --- Funciones de Dibujo ---
 dibujar_bot:
     pusha
     mov ax, 0xA000
@@ -119,29 +155,6 @@ dibujar_bot:
     popa
     ret
 
-; =============================================
-; Función mover_bot con waypoints separados
-; Entrada:
-;   SI = Offset a waypoints_x
-;   DI = Offset a waypoints_y
-;   BX = Offset a índice
-;   CX = X actual
-;   DX = Y actual
-;   AX = Velocidad
-; Salida:
-;   CX = Nueva X
-;   DX = Nueva Y
-; =============================================
-; =============================================
-; Función mover_bot CORREGIDA
-; Entrada:
-;   SI = Offset a waypoints_x
-;   DI = Offset a waypoints_y
-;   BX = Offset a índice
-;   CX = X actual
-;   DX = Y actual
-;   AX = Velocidad
-; =============================================
 mover_bot:
     push bp
     mov bp, [bx]        ; Cargar índice actual
@@ -233,12 +246,8 @@ delay:
     int 0x15
     ret
 
-check_tecla:
-    mov ah, 0x01
-    int 0x16
-    ret
+; Vars
 
-; --- Variables ---
 bot1_x dw 0
 bot1_y dw 0
 bot2_x dw 0
@@ -251,27 +260,20 @@ bot1_index dw 0
 bot2_index dw 0
 bot3_index dw 0
 
-; Waypoints separados X/Y
-bot1_waypoints_x:
-    dw 38, 38, -1
-bot1_waypoints_y:
-    dw 97, 97, -1
-
-bot2_waypoints_x:
-    dw 38, 38, 282, 282, 38, -1
-bot2_waypoints_y:
-    dw 97, 38, 38, 162, 162, -1
-
-bot3_waypoints_x:
-    dw 38, 38, -1
-bot3_waypoints_y:
-    dw 97, 97, -1
-
 ; Temporales
-temp_x dw 0
-temp_y dw 0
 temp_target_x dw 0
 temp_target_y dw 0
 
-times 510-($-$$) db 0
-dw 0xAA55
+temp_x dw 0
+temp_y dw 0
+
+; Waypoints
+; Waypoints mejorados para movimiento rectangular
+bot1_waypoints_x: dw 20, 300, 300, 20, 20, -1
+bot1_waypoints_y: dw 100, 100, 180, 180, 100, -1
+
+bot2_waypoints_x: dw 38, 300, 300, 38, 38, -1
+bot2_waypoints_y: dw 100, 100, 175, 175, 100, -1
+
+bot3_waypoints_x: dw 56, 300, 300, 56, 56, -1
+bot3_waypoints_y: dw 100, 100, 170, 170, 100, -1
