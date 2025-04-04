@@ -1,5 +1,7 @@
 [bits 16]
 
+;   <><><><><><><><><><><><><><><><><><><><>                 MAIN               <><><><><><><><><><><><><><><><><><><><>
+
 main:
     push cs
     pop ds 
@@ -13,105 +15,46 @@ main:
     mov es, ax
 
     ; Posiciones iniciales
-    mov word [bot1_x], 20
-    mov word [bot1_y], 100
-    mov word [bot2_x], 38
-    mov word [bot2_y], 100
-    mov word [bot3_x], 56
-    mov word [bot3_y], 100
-    
-    ; Índices iniciales
-    mov word [bot1_index], 0
-    mov word [bot2_index], 0
-    mov word [bot3_index], 0
+    mov word [bot1PositionX], 16
+    mov word [bot1PositionY], 112
+    mov word [bot1CurrentCheckpoint], 0
+    mov word [bot1Speed], 1
 
-    call game_loop
+    mov word [bot2PositionX], 32
+    mov word [bot2PositionY], 128
+    mov word [bot2CurrentCheckpoint], 0
+    mov word [bot2Speed], 1
 
-game_loop:
+    mov word [bot3PositionX], 48
+    mov word [bot3PositionY], 136
+    mov word [bot3CurrentCheckpoint], 0
+    mov word [bot3Speed], 1
 
-    call refresh
+    call gameLoop
 
-    ; Pixeles para control visual de los puntos de control en pantalla
-    mov di, 100      ; Y
-    imul di, 320     ; Y * 320
-    add di, 38       ; + X
-    mov byte [es:di], 4
+;   <><><><><><><><><><><><><><><><><><><><>              GAME LOOP             <><><><><><><><><><><><><><><><><><><><>
 
-    mov di, 100      ; Y
-    imul di, 320     ; Y * 320
-    add di, 300       ; + X
-    mov byte [es:di], 4
+gameLoop:
 
-    mov di, 175      ; Y
-    imul di, 320     ; Y * 320
-    add di, 300       ; + X
-    mov byte [es:di], 4
-
-    mov di, 175      ; Y
-    imul di, 320     ; Y * 320
-    add di, 38       ; + X
-    mov byte [es:di], 4
+    call refreshScreen
 
     call draw_Map
 
-    ; Mover Bot 1
-    mov si, bot1_waypoints_x
-    mov di, bot1_waypoints_y
-    mov bx, bot1_index
-    mov cx, [bot1_x]
-    mov dx, [bot1_y]
-    mov ax, 3
-    call mover_bot
-    mov [bot1_x], cx
-    mov [bot1_y], dx
-    
-    ; Mover Bot 2
-    mov si, bot2_waypoints_x
-    mov di, bot2_waypoints_y
-    mov bx, bot2_index
-    mov cx, [bot2_x]
-    mov dx, [bot2_y]
-    mov ax, 2
-    call mover_bot
-    mov [bot2_x], cx
-    mov [bot2_y], dx
-    
-    ; Mover Bot 3
-    mov si, bot3_waypoints_x
-    mov di, bot3_waypoints_y
-    mov bx, bot3_index
-    mov cx, [bot3_x]
-    mov dx, [bot3_y]
-    mov ax, 1
-    call mover_bot
-    mov [bot3_x], cx
-    mov [bot3_y], dx
+    call updateBot1Position
+    call updateBot2Position
+    call updateBot3Position
 
     ; Dibujar bots
-    mov cx, [bot1_x]
-    mov dx, [bot1_y]
-    call dibujar_bot
     
-    mov cx, [bot2_x]
-    mov dx, [bot2_y]
-    call dibujar_bot
-    
-    mov cx, [bot3_x]
-    mov dx, [bot3_y]
-    call dibujar_bot
+    call drawBot1
+    call drawBot2
+    call drawBot3
 
     call delay
 
-    jz game_loop
+    jz gameLoop
 
-refresh:
-    mov ax, 0xA000
-    mov es, ax
-    xor di, di
-    mov cx, 320*200
-    xor al, al
-    rep stosb
-    ret   
+;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
 
 draw_Map:
 ; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
@@ -122,121 +65,1136 @@ draw_Map:
 
     ret
 
-; --- Funciones de Dibujo ---
-dibujar_bot:
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 1 DRAWING           <><><><><><><><><><><><><><><><><><><><>
+
+drawBot1:
     pusha
-    mov ax, 0xA000
-    mov es, ax
     
-    mov [temp_x], cx
-    mov [temp_y], dx
+    mov cx, [bot1PositionX]
+    mov dx, [bot1PositionY]
+    mov [tempX], cx
+    mov [temp], dx
     
     mov cx, 6
-.fila:
+.drawBot1Row:
     push cx
     mov cx, 6
-    mov bx, [temp_x]
+    mov bx, [tempX]
     
-.col:
-    mov ax, [temp_y]
+.drawBot1Column:
+    mov ax, [temp]
     mov di, 320
     imul di
     add ax, bx
     mov di, ax
-    mov byte [es:di], 15
+    mov byte [es:di], 14
     
     inc bx
-    loop .col
+    loop .drawBot1Column
     
-    inc word [temp_y]
+    inc word [temp]
     pop cx
-    loop .fila
+    loop .drawBot1Row
     
     popa
     ret
 
-mover_bot:
-    push bp
-    mov bp, [bx]        ; Cargar índice actual
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 1 MOVEMENT          <><><><><><><><><><><><><><><><><><><><>
+
+updateBot1Position:
+    pusha
+
+    mov ax, [bot1CurrentCheckpoint]
     
-    ; Obtener target_x (CORRECCIÓN 1)
-    shl bp, 1           ; Índice * 2 (words)
-    mov si, [si + bp]   ; Cargar waypoint_x
-    mov [temp_target_x], si
+    cmp ax, 0
+    je moveBot1ToCheckpoint1
+
+    cmp ax, 1
+    je moveBot1ToCheckpoint2
+
+    cmp ax, 2
+    je moveBot1ToCheckpoint3
+
+    cmp ax, 3
+    je moveBot1ToCheckpoint4
+
+    cmp ax, 4
+    je moveBot1ToCheckpoint5
+
+    cmp ax, 5
+    je moveBot1ToCheckpoint6
+
+    cmp ax, 6
+    je moveBot1ToCheckpoint7
+
+    cmp ax, 7
+    je moveBot1ToCheckpoint8
+
+    cmp ax, 8
+    je moveBot1ToCheckpoint9
+
+    cmp ax, 9
+    je moveBot1ToCheckpoint10
     
-    ; Obtener target_y (CORRECCIÓN 2)
-    mov di, [di + bp]
-    mov [temp_target_y], di
+
+; BOT 1 - CHECKPOINT 1: (16,48)
+
+moveBot1ToCheckpoint1:
+    mov ax, [bot1PositionX]
+    cmp ax, 16
+    jne moveBot1ToCheckpoint1X
+    mov ax, [bot1PositionY]
+    cmp ax, 48
+    jne moveBot1ToCheckpoint1Y
+
+    mov word [bot1CurrentCheckpoint], 1
+
+    jmp done
+
+moveBot1ToCheckpoint1X:
+    mov ax, 16
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint1Y:
+    mov ax, 48
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 2: (96,48)
+
+moveBot1ToCheckpoint2:
+    mov ax, [bot1PositionX]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint2X
+    mov ax, [bot1PositionY]
+    cmp ax, 48
+    jne moveBot1ToCheckpoint2Y
+
+    mov word [bot1CurrentCheckpoint], 2
+
+    jmp done
+
+moveBot1ToCheckpoint2X:
+    mov ax, 96
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint2Y:
+    mov ax, 48
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 3: (96,96)
+
+moveBot1ToCheckpoint3:
+    mov ax, [bot1PositionX]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint3X
+    mov ax, [bot1PositionY]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint3Y
+
+    mov word [bot1CurrentCheckpoint], 3
+
+    jmp done
+
+moveBot1ToCheckpoint3X:
+    mov ax, 96
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint3Y:
+    mov ax, 96
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 4: (120,96)
+
+moveBot1ToCheckpoint4:
+    mov ax, [bot1PositionX]
+    cmp ax, 120
+    jne moveBot1ToCheckpoint4X
+    mov ax, [bot1PositionY]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint4Y
+
+    mov word [bot1CurrentCheckpoint], 4
+
+    jmp done
+
+moveBot1ToCheckpoint4X:
+    mov ax, 120
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint4Y:
+    mov ax, 96
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 5: (120,48)
+
+moveBot1ToCheckpoint5:
+    mov ax, [bot1PositionX]
+    cmp ax, 120
+    jne moveBot1ToCheckpoint5X
+    mov ax, [bot1PositionY]
+    cmp ax, 48
+    jne moveBot1ToCheckpoint5Y
+
+    mov word [bot1CurrentCheckpoint], 5
+
+    jmp done
+
+moveBot1ToCheckpoint5X:
+    mov ax, 120
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint5Y:
+    mov ax, 48
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 6: (200,48)
+
+moveBot1ToCheckpoint6:
+    mov ax, [bot1PositionX]
+    cmp ax, 200
+    jne moveBot1ToCheckpoint6X
+    mov ax, [bot1PositionY]
+    cmp ax, 48
+    jne moveBot1ToCheckpoint6Y
+
+    mov word [bot1CurrentCheckpoint], 6
+
+    jmp done
+
+moveBot1ToCheckpoint6X:
+    mov ax, 200
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint6Y:
+    mov ax, 48
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 7: (200,96)
+
+moveBot1ToCheckpoint7:
+    mov ax, [bot1PositionX]
+    cmp ax, 200
+    jne moveBot1ToCheckpoint7X
+    mov ax, [bot1PositionY]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint7Y
+
+    mov word [bot1CurrentCheckpoint], 7
+
+    jmp done
+
+moveBot1ToCheckpoint7X:
+    mov ax, 200
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint7Y:
+    mov ax, 96
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 8: (296,96)
+
+moveBot1ToCheckpoint8:
+    mov ax, [bot1PositionX]
+    cmp ax, 296
+    jne moveBot1ToCheckpoint8X
+    mov ax, [bot1PositionY]
+    cmp ax, 96
+    jne moveBot1ToCheckpoint8Y
+
+    mov word [bot1CurrentCheckpoint], 8
+
+    jmp done
+
+moveBot1ToCheckpoint8X:
+    mov ax, 296
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint8Y:
+    mov ax, 96
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+
+; BOT 1 - CHECKPOINT 9: (296,176)
+
+moveBot1ToCheckpoint9:
+    mov ax, [bot1PositionX]
+    cmp ax, 296
+    jne moveBot1ToCheckpoint9X
+    mov ax, [bot1PositionY]
+    cmp ax, 176
+    jne moveBot1ToCheckpoint9Y
+
+    mov word [bot1CurrentCheckpoint], 9
+
+    jmp done
+
+moveBot1ToCheckpoint9X:
+    mov ax, 296
+    cmp [bot1PositionX], ax
+    jl incrementBot1X
+    jg decreaseBot1X
+    jmp done
+
+moveBot1ToCheckpoint9Y:
+    mov ax, 176
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y
+    jg decreaseBot1Y
+    jmp done
+
+; BOT 1 - CHECKPOINT 10: (16,176)
+
+moveBot1ToCheckpoint10:
+    mov ax, [bot1PositionX]
+    cmp ax, 16
+    jne moveBot1ToCheckpoint10X
+    mov ax, [bot1PositionY]
+    cmp ax, 176
+    jne moveBot1ToCheckpoint10Y
+
+    mov word [bot1CurrentCheckpoint], 0
+
+    jmp done
+
+moveBot1ToCheckpoint10X:
+    mov ax, 16    
+    cmp [bot1PositionX], ax
+    jl incrementBot1X       
+    jg decreaseBot1X       
+    jmp done   
+
+moveBot1ToCheckpoint10Y:
+    mov ax, 176      
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y       
+    jg decreaseBot1Y       
+    jmp done
+
+;   <><><><><><><><><><><><><><><><><><><><>   BOT 1 COMMON MOVEMENT FUNCTIONS  <><><><><><><><><><><><><><><><><><><><>
+
+incrementBot1X:
+    mov ax, [bot1Speed]
+    add word [bot1PositionX], ax
+    jmp done
+decreaseBot1X:
+    mov ax, [bot1Speed]
+    sub word [bot1PositionX], ax
+    jmp done
+
+incrementBot1Y:
+    mov ax, [bot1Speed]
+    add word [bot1PositionY], ax
+    jmp done
+decreaseBot1Y:
+    mov ax, [bot1Speed]
+    sub word [bot1PositionY], ax
+    jmp done
+
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 2 DRAWING           <><><><><><><><><><><><><><><><><><><><>
+
+drawBot2:
+    pusha
     
-    ; Restaurar SI/DI originales (no necesario ahora)
+    mov cx, [bot2PositionX]
+    mov dx, [bot2PositionY]
+    mov [tempX], cx
+    mov [temp], dx
     
-    ; Mover en X
-    mov si, cx          ; X actual
-    cmp si, [temp_target_x]
-    je .check_y
-    jl .move_right_x
+    mov cx, 6
+.drawBot2Row:
+    push cx
+    mov cx, 6
+    mov bx, [tempX]
     
-    ; Mover izquierda
-    sub si, ax
-    cmp si, [temp_target_x]
-    jge .update_x
-    mov si, [temp_target_x]
-    jmp .update_x
+.drawBot2Column:
+    mov ax, [temp]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 5
     
-.move_right_x:
-    add si, ax
-    cmp si, [temp_target_x]
-    jle .update_x
-    mov si, [temp_target_x]
+    inc bx
+    loop .drawBot2Column
     
-.update_x:
-    mov cx, si          ; Actualizar X
+    inc word [temp]
+    pop cx
+    loop .drawBot2Row
     
-.check_y:
-    ; Mover en Y
-    mov di, dx          ; Y actual
-    cmp di, [temp_target_y]
-    je .check_target_reached
-    jl .move_down_y
+    popa
+    ret
+
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 2 MOVEMENT          <><><><><><><><><><><><><><><><><><><><>
+
+updateBot2Position:
+    pusha
+
+    mov ax, [bot2CurrentCheckpoint]
     
-    ; Mover arriba
-    sub di, ax
-    cmp di, [temp_target_y]
-    jge .update_y
-    mov di, [temp_target_y]
-    jmp .update_y
+    cmp ax, 0
+    je moveBot2ToCheckpoint1
+
+    cmp ax, 1
+    je moveBot2ToCheckpoint2
+
+    cmp ax, 2
+    je moveBot2ToCheckpoint3
+
+    cmp ax, 3
+    je moveBot2ToCheckpoint4
+
+    cmp ax, 4
+    je moveBot2ToCheckpoint5
+
+    cmp ax, 5
+    je moveBot2ToCheckpoint6
+
+    cmp ax, 6
+    je moveBot2ToCheckpoint7
+
+    cmp ax, 7
+    je moveBot2ToCheckpoint8
+
+    cmp ax, 8
+    je moveBot2ToCheckpoint9
+
+    cmp ax, 9
+    je moveBot2ToCheckpoint10
     
-.move_down_y:
-    add di, ax
-    cmp di, [temp_target_y]
-    jle .update_y
-    mov di, [temp_target_y]
+
+; BOT 2 - CHECKPOINT 1: (32,64)
+
+moveBot2ToCheckpoint1:
+    mov ax, [bot2PositionX]
+    cmp ax, 32
+    jne moveBot2ToCheckpoint1X
+    mov ax, [bot2PositionY]
+    cmp ax, 64
+    jne moveBot2ToCheckpoint1Y
+
+    mov word [bot2CurrentCheckpoint], 1
+
+    jmp done
+
+moveBot2ToCheckpoint1X:
+    mov ax, 32
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint1Y:
+    mov ax, 64
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 2: (80,64)
+
+moveBot2ToCheckpoint2:
+    mov ax, [bot2PositionX]
+    cmp ax, 80
+    jne moveBot2ToCheckpoint2X
+    mov ax, [bot2PositionY]
+    cmp ax, 64
+    jne moveBot2ToCheckpoint2Y
+
+    mov word [bot2CurrentCheckpoint], 2
+
+    jmp done
+
+moveBot2ToCheckpoint2X:
+    mov ax, 80
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint2Y:
+    mov ax, 64
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 3: (80,112)
+
+moveBot2ToCheckpoint3:
+    mov ax, [bot2PositionX]
+    cmp ax, 80
+    jne moveBot2ToCheckpoint3X
+    mov ax, [bot2PositionY]
+    cmp ax, 112
+    jne moveBot2ToCheckpoint3Y
+
+    mov word [bot2CurrentCheckpoint], 3
+
+    jmp done
+
+moveBot2ToCheckpoint3X:
+    mov ax, 80
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint3Y:
+    mov ax, 112
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 4: (136,112)
+
+moveBot2ToCheckpoint4:
+    mov ax, [bot2PositionX]
+    cmp ax, 136
+    jne moveBot2ToCheckpoint4X
+    mov ax, [bot2PositionY]
+    cmp ax, 112
+    jne moveBot2ToCheckpoint4Y
+
+    mov word [bot2CurrentCheckpoint], 4
+
+    jmp done
+
+moveBot2ToCheckpoint4X:
+    mov ax, 136
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint4Y:
+    mov ax, 112
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 5: (136,64)
+
+moveBot2ToCheckpoint5:
+    mov ax, [bot2PositionX]
+    cmp ax, 136
+    jne moveBot2ToCheckpoint5X
+    mov ax, [bot2PositionY]
+    cmp ax, 64
+    jne moveBot2ToCheckpoint5Y
+
+    mov word [bot2CurrentCheckpoint], 5
+
+    jmp done
+
+moveBot2ToCheckpoint5X:
+    mov ax, 136
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint5Y:
+    mov ax, 64
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 6: (184,64)
+
+moveBot2ToCheckpoint6:
+    mov ax, [bot2PositionX]
+    cmp ax, 184
+    jne moveBot2ToCheckpoint6X
+    mov ax, [bot2PositionY]
+    cmp ax, 64
+    jne moveBot2ToCheckpoint6Y
+
+    mov word [bot2CurrentCheckpoint], 6
+
+    jmp done
+
+moveBot2ToCheckpoint6X:
+    mov ax, 184
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint6Y:
+    mov ax, 64
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 7: (184,112)
+
+moveBot2ToCheckpoint7:
+    mov ax, [bot2PositionX]
+    cmp ax, 184
+    jne moveBot2ToCheckpoint7X
+    mov ax, [bot2PositionY]
+    cmp ax, 112
+    jne moveBot2ToCheckpoint7Y
+
+    mov word [bot2CurrentCheckpoint], 7
+
+    jmp done
+
+moveBot2ToCheckpoint7X:
+    mov ax, 184
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint7Y:
+    mov ax, 112
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 8: (280,112)
+
+moveBot2ToCheckpoint8:
+    mov ax, [bot2PositionX]
+    cmp ax, 280
+    jne moveBot2ToCheckpoint8X
+    mov ax, [bot2PositionY]
+    cmp ax, 112
+    jne moveBot2ToCheckpoint8Y
+
+    mov word [bot2CurrentCheckpoint], 8
+
+    jmp done
+
+moveBot2ToCheckpoint8X:
+    mov ax, 280
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint8Y:
+    mov ax, 112
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+
+; BOT 2 - CHECKPOINT 9: (280,160)
+
+moveBot2ToCheckpoint9:
+    mov ax, [bot2PositionX]
+    cmp ax, 280
+    jne moveBot2ToCheckpoint9X
+    mov ax, [bot2PositionY]
+    cmp ax, 160
+    jne moveBot2ToCheckpoint9Y
+
+    mov word [bot2CurrentCheckpoint], 9
+
+    jmp done
+
+moveBot2ToCheckpoint9X:
+    mov ax, 280
+    cmp [bot2PositionX], ax
+    jl incrementBot2X
+    jg decreaseBot2X
+    jmp done
+
+moveBot2ToCheckpoint9Y:
+    mov ax, 160
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y
+    jg decreaseBot2Y
+    jmp done
+
+; BOT 2 - CHECKPOINT 10: (32,160)
+
+moveBot2ToCheckpoint10:
+    mov ax, [bot2PositionX]
+    cmp ax, 32
+    jne moveBot2ToCheckpoint10X
+    mov ax, [bot2PositionY]
+    cmp ax, 160
+    jne moveBot2ToCheckpoint10Y
+
+    mov word [bot2CurrentCheckpoint], 0
+
+    jmp done
+
+moveBot2ToCheckpoint10X:
+    mov ax, 32   
+    cmp [bot2PositionX], ax
+    jl incrementBot2X       
+    jg decreaseBot2X       
+    jmp done   
+
+moveBot2ToCheckpoint10Y:
+    mov ax, 160
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y       
+    jg decreaseBot2Y       
+    jmp done
+
+;   <><><><><><><><><><><><><><><><><><><><>   BOT 2 COMMON MOVEMENT FUNCTIONS  <><><><><><><><><><><><><><><><><><><><><>
+
+incrementBot2X:
+    mov ax, [bot2Speed]
+    add word [bot2PositionX], ax
+    jmp done
+decreaseBot2X:
+    mov ax, [bot2Speed]
+    sub word [bot2PositionX], ax
+    jmp done
+
+incrementBot2Y:
+    mov ax, [bot2Speed]
+    add word [bot2PositionY], ax
+    jmp done
+decreaseBot2Y:
+    mov ax, [bot2Speed]
+    sub word [bot2PositionY], ax
+    jmp done
+    jmp done
+
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 3 DRAWING           <><><><><><><><><><><><><><><><><><><><>
+
+drawBot3:
+    pusha
     
-.update_y:
-    mov dx, di          ; Actualizar Y
+    mov cx, [bot3PositionX]
+    mov dx, [bot3PositionY]
+    mov [tempX], cx
+    mov [temp], dx
     
-.check_target_reached:
-    ; Verificar si llegamos al waypoint
-    mov si, cx
-    sub si, [temp_target_x]
-    jnz .done
-    mov di, dx
-    sub di, [temp_target_y]
-    jnz .done
+    mov cx, 6
+.drawBot3Row:
+    push cx
+    mov cx, 6
+    mov bx, [tempX]
     
-    ; Avanzar al siguiente waypoint
-    inc word [bx]
+.drawBot3Column:
+    mov ax, [temp]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 1
     
-    ; Verificar reinicio (CORRECCIÓN 3)
-    mov bp, [bx]
-    shl bp, 1
-    mov si, bot1_waypoints_x  ; Asumimos bot1 (ajustar según bot)
-    cmp word [si + bp], -1
-    jne .done
-    mov word [bx], 0    ; Reiniciar índice
+    inc bx
+    loop .drawBot3Column
     
-.done:
-    pop bp
+    inc word [temp]
+    pop cx
+    loop .drawBot3Row
+    
+    popa
+    ret
+
+;   <><><><><><><><><><><><><><><><><><><><>            BOT 3 MOVEMENT          <><><><><><><><><><><><><><><><><><><><>
+
+updateBot3Position:
+    pusha
+
+    mov ax, [bot3CurrentCheckpoint]
+    
+    cmp ax, 0
+    je moveBot3ToCheckpoint1
+
+    cmp ax, 1
+    je moveBot3ToCheckpoint2
+
+    cmp ax, 2
+    je moveBot3ToCheckpoint3
+
+    cmp ax, 3
+    je moveBot3ToCheckpoint4
+
+    cmp ax, 4
+    je moveBot3ToCheckpoint5
+
+    cmp ax, 5
+    je moveBot3ToCheckpoint6
+
+    cmp ax, 6
+    je moveBot3ToCheckpoint7
+
+    cmp ax, 7
+    je moveBot3ToCheckpoint8
+
+    cmp ax, 8
+    je moveBot3ToCheckpoint9
+
+    cmp ax, 9
+    je moveBot3ToCheckpoint10
+    
+
+; BOT 3 - CHECKPOINT 1: (48,72)
+
+moveBot3ToCheckpoint1:
+    mov ax, [bot3PositionX]
+    cmp ax, 48
+    jne moveBot3ToCheckpoint1X
+    mov ax, [bot3PositionY]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint1Y
+
+    mov word [bot3CurrentCheckpoint], 1
+
+    jmp done
+
+moveBot3ToCheckpoint1X:
+    mov ax, 48
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint1Y:
+    mov ax, 72
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 2: (72,72)
+
+moveBot3ToCheckpoint2:
+    mov ax, [bot3PositionX]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint2X
+    mov ax, [bot3PositionY]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint2Y
+
+    mov word [bot3CurrentCheckpoint], 2
+
+    jmp done
+
+moveBot3ToCheckpoint2X:
+    mov ax, 72
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint2Y:
+    mov ax, 72
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 3: (72,128)
+
+moveBot3ToCheckpoint3:
+    mov ax, [bot3PositionX]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint3X
+    mov ax, [bot3PositionY]
+    cmp ax, 128
+    jne moveBot3ToCheckpoint3Y
+
+    mov word [bot3CurrentCheckpoint], 3
+
+    jmp done
+
+moveBot3ToCheckpoint3X:
+    mov ax, 72
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint3Y:
+    mov ax, 128
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 4: (144,128)
+
+moveBot3ToCheckpoint4:
+    mov ax, [bot3PositionX]
+    cmp ax, 144
+    jne moveBot3ToCheckpoint4X
+    mov ax, [bot3PositionY]
+    cmp ax, 128
+    jne moveBot3ToCheckpoint4Y
+
+    mov word [bot3CurrentCheckpoint], 4
+
+    jmp done
+
+moveBot3ToCheckpoint4X:
+    mov ax, 144
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint4Y:
+    mov ax, 128
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 5: (144,72)
+
+moveBot3ToCheckpoint5:
+    mov ax, [bot3PositionX]
+    cmp ax, 144
+    jne moveBot3ToCheckpoint5X
+    mov ax, [bot3PositionY]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint5Y
+
+    mov word [bot3CurrentCheckpoint], 5
+
+    jmp done
+
+moveBot3ToCheckpoint5X:
+    mov ax, 144
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint5Y:
+    mov ax, 72
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 6: (168,72)
+
+moveBot3ToCheckpoint6:
+    mov ax, [bot3PositionX]
+    cmp ax, 168
+    jne moveBot3ToCheckpoint6X
+    mov ax, [bot3PositionY]
+    cmp ax, 72
+    jne moveBot3ToCheckpoint6Y
+
+    mov word [bot3CurrentCheckpoint], 6
+
+    jmp done
+
+moveBot3ToCheckpoint6X:
+    mov ax, 168
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint6Y:
+    mov ax, 72
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 7: (168,128)
+
+moveBot3ToCheckpoint7:
+    mov ax, [bot3PositionX]
+    cmp ax, 168
+    jne moveBot3ToCheckpoint7X
+    mov ax, [bot3PositionY]
+    cmp ax, 128
+    jne moveBot3ToCheckpoint7Y
+
+    mov word [bot3CurrentCheckpoint], 7
+
+    jmp done
+
+moveBot3ToCheckpoint7X:
+    mov ax, 168
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint7Y:
+    mov ax, 128
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 8: (216,128)
+
+moveBot3ToCheckpoint8:
+    mov ax, [bot3PositionX]
+    cmp ax, 216
+    jne moveBot3ToCheckpoint8X
+    mov ax, [bot3PositionY]
+    cmp ax, 128
+    jne moveBot3ToCheckpoint8Y
+
+    mov word [bot3CurrentCheckpoint], 8
+
+    jmp done
+
+moveBot3ToCheckpoint8X:
+    mov ax, 216
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint8Y:
+    mov ax, 128
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+
+; BOT 3 - CHECKPOINT 9: (216,152)
+
+moveBot3ToCheckpoint9:
+    mov ax, [bot3PositionX]
+    cmp ax, 216
+    jne moveBot3ToCheckpoint9X
+    mov ax, [bot3PositionY]
+    cmp ax, 152
+    jne moveBot3ToCheckpoint9Y
+
+    mov word [bot3CurrentCheckpoint], 9
+
+    jmp done
+
+moveBot3ToCheckpoint9X:
+    mov ax, 216
+    cmp [bot3PositionX], ax
+    jl incrementBot3X
+    jg decreaseBot3X
+    jmp done
+
+moveBot3ToCheckpoint9Y:
+    mov ax, 152
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y
+    jg decreaseBot3Y
+    jmp done
+
+; BOT 3 - CHECKPOINT 10: (48,152)
+
+moveBot3ToCheckpoint10:
+    mov ax, [bot3PositionX]
+    cmp ax, 48
+    jne moveBot3ToCheckpoint10X
+    mov ax, [bot3PositionY]
+    cmp ax, 152
+    jne moveBot3ToCheckpoint10Y
+
+    mov word [bot3CurrentCheckpoint], 0
+
+    jmp done
+
+moveBot3ToCheckpoint10X:
+    mov ax, 48   
+    cmp [bot3PositionX], ax
+    jl incrementBot3X       
+    jg decreaseBot3X       
+    jmp done   
+
+moveBot3ToCheckpoint10Y:
+    mov ax, 152      
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y       
+    jg decreaseBot3Y       
+    jmp done
+
+;   <><><><><><><><><><><><><><><><><><><><>   BOT 3 COMMON MOVEMENT FUNCTIONS  <><><><><><><><><><><><><><><><><><><><><>
+
+incrementBot3X:
+    mov ax, [bot3Speed]
+    add word [bot3PositionX], ax
+    jmp done
+decreaseBot3X:
+    mov ax, [bot3Speed]
+    sub word [bot3PositionX], ax
+    jmp done
+
+incrementBot3Y:
+    mov ax, [bot3Speed]
+    add word [bot3PositionY], ax
+    jmp done
+decreaseBot3Y:
+    mov ax, [bot3Speed]
+    sub word [bot3PositionY], ax
+    jmp done
+
+
+;   <><><><><><><><><><><><><><><><><><><><>          FUNCTIONALITIES           <><><><><><><><><><><><><><><><><><><><>
+
+refreshScreen:
+    mov ax, 0xA000
+    mov es, ax
+    xor di, di
+    mov cx, 320*200
+    xor al, al
+    rep stosb
     ret
 
 delay:
@@ -246,34 +1204,31 @@ delay:
     int 0x15
     ret
 
-; Vars
+done:
+    popa
+    ret
 
-bot1_x dw 0
-bot1_y dw 0
-bot2_x dw 0
-bot2_y dw 0
-bot3_x dw 0
-bot3_y dw 0
+;   <><><><><><><><><><><><><><><><><><><><>              VARIABLES             <><><><><><><><><><><><><><><><><><><><>
 
-; Índices
-bot1_index dw 0
-bot2_index dw 0
-bot3_index dw 0
+bot1PositionX dw 0
+bot1PositionY dw 0
+bot2PositionX dw 0
+bot2PositionY dw 0
+bot3PositionX dw 0
+bot3PositionY dw 0
 
-; Temporales
-temp_target_x dw 0
-temp_target_y dw 0
+bot1CurrentCheckpoint dw 0
+bot2CurrentCheckpoint dw 0
+bot3CurrentCheckpoint dw 0
 
-temp_x dw 0
-temp_y dw 0
+bot1Speed dw 0
+bot2Speed dw 0
+bot3Speed dw 0
 
-; Waypoints
-; Waypoints mejorados para movimiento rectangular
-bot1_waypoints_x: dw 20, 300, 300, 20, 20, -1
-bot1_waypoints_y: dw 100, 100, 180, 180, 100, -1
+tempX dw 0
+temp dw 0
 
-bot2_waypoints_x: dw 38, 300, 300, 38, 38, -1
-bot2_waypoints_y: dw 100, 100, 175, 175, 100, -1
 
-bot3_waypoints_x: dw 56, 300, 300, 56, 56, -1
-bot3_waypoints_y: dw 100, 100, 170, 170, 100, -1
+
+;   <><><><><><><><><><><><><><><><><><><><>               HEADER               <><><><><><><><><><><><><><><><><><><><>
+;   <><><><><><><><><><><><><><><><><><><><>                              <><><><><><><><><><><><><><><><><><><><>
