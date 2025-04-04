@@ -1,5 +1,7 @@
 [bits 16]
 
+
+
 ;   <><><><><><><><><><><><><><><><><><><><>                 MAIN               <><><><><><><><><><><><><><><><><><><><>
 
 main:
@@ -18,17 +20,25 @@ main:
     mov word [bot1PositionX], 16
     mov word [bot1PositionY], 112
     mov word [bot1CurrentCheckpoint], 0
-    mov word [bot1Speed], 1
+    call getRandomSpeed
+    mov [bot1Speed], ax
+
+    call delay
 
     mov word [bot2PositionX], 32
     mov word [bot2PositionY], 128
     mov word [bot2CurrentCheckpoint], 0
-    mov word [bot2Speed], 1
+    call getRandomSpeed
+    mov [bot2Speed], ax
+
+    call delay
 
     mov word [bot3PositionX], 48
     mov word [bot3PositionY], 136
     mov word [bot3CurrentCheckpoint], 0
     mov word [bot3Speed], 1
+    call getRandomSpeed
+    mov [bot3Speed], ax
 
     call gameLoop
 
@@ -55,6 +65,28 @@ gameLoop:
     jz gameLoop
 
 ;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
+
+getRandomSpeed:
+    rdtsc
+    xor eax, edx
+    and eax, 0x07
+    inc eax
+
+    ; FILTERS EAX TO BE 1, 2, 4 OR 8
+
+    cmp eax, 3
+    je getRandomSpeed
+
+    cmp eax, 5
+    je getRandomSpeed
+
+    cmp eax, 6
+    je getRandomSpeed
+
+    cmp eax, 7
+    je getRandomSpeed
+
+    ret
 
 draw_Map:
 ; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
@@ -1227,8 +1259,6 @@ bot3Speed dw 0
 
 tempX dw 0
 temp dw 0
-
-
 
 ;   <><><><><><><><><><><><><><><><><><><><>               HEADER               <><><><><><><><><><><><><><><><><><><><>
 ;   <><><><><><><><><><><><><><><><><><><><>                              <><><><><><><><><><><><><><><><><><><><>
