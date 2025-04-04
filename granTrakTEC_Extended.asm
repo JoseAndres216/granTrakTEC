@@ -504,12 +504,123 @@ drawBot3Laps:
 
 ;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
 
+xor cx, cx
+add cx, 10
 draw_Map:
-; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
-    mov di, 0      ; Y
+    
+    mov di, 40      ; Y
     imul di, 320     ; Y * 320
-    add di, 0       ; + X
-    mov byte [es:di], 4
+    add di, cx       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 210
+    jle draw_Map
+
+draw_Map_H2:
+    
+    mov di, 90      ; Y
+    imul di, 320     ; Y * 320
+    add di, cx       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 310
+    jle draw_Map_H2
+
+xor cx, cx
+add cx, 60
+draw_Map_H3:
+    
+    mov di, 140      ; Y
+    imul di, 320     ; Y * 320
+    add di, cx       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 210
+    jle draw_Map_H3
+
+xor cx, cx
+add cx, 10
+draw_Map_H4:
+    
+    mov di, 190      ; Y
+    imul di, 320     ; Y * 320
+    add di, cx       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 310
+    jle draw_Map_H4
+
+xor cx, cx
+add cx, 40
+draw_Map_V1:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 10       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 190
+    jle draw_Map_V1
+
+xor cx, cx
+add cx, 90
+draw_Map_V2:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 60       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 140
+    jle draw_Map_V2
+
+xor cx, cx
+add cx, 40
+draw_Map_V3:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 110       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 90
+    jle draw_Map_V3
+
+xor cx, cx
+add cx, 90
+draw_Map_V4:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 160       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 140
+    jle draw_Map_V4
+
+xor cx, cx
+add cx, 40
+draw_Map_V5:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 210       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 90
+    jle draw_Map_V5
+
+xor cx, cx
+add cx, 90
+draw_Map_V6:
+    
+    mov di, cx      ; Y
+    imul di, 320     ; Y * 320
+    add di, 310       ; + X
+    mov byte [es:di], 15
+    inc cx
+    cmp cx, 190
+    jle draw_Map_V6
 
     ret
 
