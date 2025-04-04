@@ -75,16 +75,20 @@ getRandomSpeed:
     ; FILTERS EAX TO BE 1, 2, 4 OR 8
 
     cmp eax, 3
-    je getRandomSpeed
+    mov ebx, 2
+    cmove eax, ebx
 
     cmp eax, 5
-    je getRandomSpeed
+    mov ebx, 4
+    cmove eax, ebx
 
     cmp eax, 6
-    je getRandomSpeed
+    mov ebx, 4
+    cmove eax, ebx
 
     cmp eax, 7
-    je getRandomSpeed
+    mov ebx, 4
+    cmove eax, ebx
 
     ret
 
