@@ -16,8 +16,8 @@ main:
 
 ;   <><><><><><><><><><>        VARIABLES INITIALIZATION       <><><><><><><><><><>
 
-    mov word [player1Laps], 0
-    mov word [player2Laps], 0
+    mov word [player1Laps], 3
+    mov word [player2Laps], 5
 
     mov word [bot1PositionX], 16
     mov word [bot1PositionY], 112
@@ -60,8 +60,6 @@ gameLoop:
 
     call draw_Map
 
-;   PLAYERS
-
     call updateBot1Position
     call updateBot2Position
     call updateBot3Position
@@ -69,7 +67,7 @@ gameLoop:
     call drawBot1
     call drawBot2
     call drawBot3
-
+    
     call checkSecondPassed
 
     jz gameLoop
@@ -307,7 +305,7 @@ drawBot1Icon:
     imul di
     add ax, bx
     mov di, ax
-    mov byte [es:di], 5
+    mov byte [es:di], 14
     
     inc bx
     loop .drawBot1IconColumn
@@ -344,7 +342,7 @@ drawBot1Laps:
     mov bx, di
     
 .bot1LapPointColumns:
-    mov byte [es:bx], 5
+    mov byte [es:bx], 14
     inc bx
     loop .bot1LapPointColumns
     
@@ -382,7 +380,7 @@ drawBot2Icon:
     imul di
     add ax, bx
     mov di, ax
-    mov byte [es:di], 14
+    mov byte [es:di], 5
     
     inc bx
     loop .drawBot2IconColumn
@@ -419,7 +417,7 @@ drawBot2Laps:
     mov bx, di
     
 .bot2LapPointColumns:
-    mov byte [es:bx], 14
+    mov byte [es:bx], 5
     inc bx
     loop .bot2LapPointColumns
     
@@ -552,129 +550,14 @@ drawLinearTimer:
 
 ;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
 
-xor cx, cx
-add cx, 10
 draw_Map:
-    
-    mov di, 40      ; Y
+; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
+    mov di, 0      ; Y
     imul di, 320     ; Y * 320
-    add di, cx       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 210
-    jle draw_Map
-
-draw_Map_H2:
-    
-    mov di, 90      ; Y
-    imul di, 320     ; Y * 320
-    add di, cx       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 310
-    jle draw_Map_H2
-
-xor cx, cx
-add cx, 60
-draw_Map_H3:
-    
-    mov di, 140      ; Y
-    imul di, 320     ; Y * 320
-    add di, cx       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 210
-    jle draw_Map_H3
-
-xor cx, cx
-add cx, 10
-draw_Map_H4:
-    
-    mov di, 190      ; Y
-    imul di, 320     ; Y * 320
-    add di, cx       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 310
-    jle draw_Map_H4
-
-xor cx, cx
-add cx, 40
-draw_Map_V1:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 10       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 190
-    jle draw_Map_V1
-
-xor cx, cx
-add cx, 90
-draw_Map_V2:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 60       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 140
-    jle draw_Map_V2
-
-xor cx, cx
-add cx, 40
-draw_Map_V3:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 110       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 90
-    jle draw_Map_V3
-
-xor cx, cx
-add cx, 90
-draw_Map_V4:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 160       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 140
-    jle draw_Map_V4
-
-xor cx, cx
-add cx, 40
-draw_Map_V5:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 210       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 90
-    jle draw_Map_V5
-
-xor cx, cx
-add cx, 90
-draw_Map_V6:
-    
-    mov di, cx      ; Y
-    imul di, 320     ; Y * 320
-    add di, 310       ; + X
-    mov byte [es:di], 15
-    inc cx
-    cmp cx, 190
-    jle draw_Map_V6
+    add di, 0       ; + X
+    mov byte [es:di], 4
 
     ret
-
-;   <><><><><><><><><><><><><><><><><><><><>           PLAYERS DRAWING          <><><><><><><><><><><><><><><><><><><><>
-
-
 
 ;   <><><><><><><><><><><><><><><><><><><><>            BOT 1 DRAWING           <><><><><><><><><><><><><><><><><><><><>
 
@@ -698,7 +581,7 @@ drawBot1:
     imul di
     add ax, bx
     mov di, ax
-    mov byte [es:di], 5
+    mov byte [es:di], 14
     
     inc bx
     loop .drawBot1Column
@@ -1103,7 +986,7 @@ drawBot2:
     imul di
     add ax, bx
     mov di, ax
-    mov byte [es:di], 14
+    mov byte [es:di], 5
     
     inc bx
     loop .drawBot2Column
@@ -1935,12 +1818,11 @@ getRandomSpeed:
     mov ebx, 4
     cmove eax, ebx
 
-    ret  
+    ret
 
 ;   <><><><><><><><><><>             TIME CHECKING              <><><><><><><><><><>
 
 checkSecondPassed:
-
     push ax
     push dx
     
@@ -1962,7 +1844,7 @@ checkSecondPassed:
     pop dx
     pop ax
 
-;   <><><><><><><><><><>             GRAPHIC DELAY             <><><><><><><><><><>
+;   <><><><><><><><><><>                OTHERS                 <><><><><><><><><><>
 
 delay:
     mov ah, 0x86
