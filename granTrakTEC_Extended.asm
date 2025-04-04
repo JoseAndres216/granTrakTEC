@@ -1,27 +1,30 @@
 [bits 16]
 
-
-
 ;   <><><><><><><><><><><><><><><><><><><><>                 MAIN               <><><><><><><><><><><><><><><><><><><><>
 
 main:
     push cs
     pop ds 
 
-    ; Cambiar a modo gráfico
+;   <><><><><><><><><><>              GRAPHIC MODE             <><><><><><><><><><>
+
     mov ax, 0x0013
     int 0x10
 
-    ; Configurar segmento de video (ES = 0xA000)
     mov ax, 0xA000
     mov es, ax
 
-    ; Posiciones iniciales
+;   <><><><><><><><><><>        VARIABLES INITIALIZATION       <><><><><><><><><><>
+
+    mov word [player1Laps], 0
+    mov word [player2Laps], 0
+
     mov word [bot1PositionX], 16
     mov word [bot1PositionY], 112
     mov word [bot1CurrentCheckpoint], 0
     call getRandomSpeed
     mov [bot1Speed], ax
+    mov word [bot1Laps], 0
 
     call delay
 
@@ -30,15 +33,17 @@ main:
     mov word [bot2CurrentCheckpoint], 0
     call getRandomSpeed
     mov [bot2Speed], ax
+    mov word [bot2Laps], 0
 
     call delay
 
     mov word [bot3PositionX], 48
     mov word [bot3PositionY], 136
     mov word [bot3CurrentCheckpoint], 0
-    mov word [bot3Speed], 1
     call getRandomSpeed
+    mov ax, 4
     mov [bot3Speed], ax
+    mov word [bot3Laps], 0
 
     call gameLoop
 
@@ -48,13 +53,13 @@ gameLoop:
 
     call refreshScreen
 
+    call drawGUI
+
     call draw_Map
 
     call updateBot1Position
     call updateBot2Position
     call updateBot3Position
-
-    ; Dibujar bots
     
     call drawBot1
     call drawBot2
@@ -64,33 +69,440 @@ gameLoop:
 
     jz gameLoop
 
+;   <><><><><><><><><><><><><><><><><><><><>             GUI DRAWING            <><><><><><><><><><><><><><><><><><><><>
+
+drawGUI:
+
+    jmp drawSeparationLines
+
+    jmp drawPlayer1Icon
+    jmp drawPlayer1Laps
+
+    jmp drawPlayer2Icon
+    jmp drawPlayer2Laps
+
+    jmp drawBot1Icon
+    jmp drawBot1Laps
+
+    jmp drawBot2Icon
+    jmp drawBot2Laps
+
+    jmp drawBot3Icon
+    jmp drawBot3Laps
+
+;   <><><><><><><><><><>            SEPARATION LINES           <><><><><><><><><><>
+
+drawSeparationLines:
+    jmp drawGUIGameScreenSeparationLine
+
+drawGUIGameScreenSeparationLine:
+    pusha
+    
+    mov cx, 0
+    mov dx, 28
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 2
+
+.drawGUIGameScreenSeparationLineRow:
+    push cx
+    mov cx, 320
+    mov bx, [temporalX]
+
+.drawGUIGameScreenSeparationLineColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 8
+    
+    inc bx
+    loop .drawGUIGameScreenSeparationLineColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawGUIGameScreenSeparationLineRow
+    
+    popa
+
+;   <><><><><><><><><><>           PLAYER 1 GUI: ICON          <><><><><><><><><><>
+
+drawPlayer1Icon:
+    pusha
+    
+    mov cx, 10
+    mov dx, 10
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 10
+
+.drawPlayer1IconRow:
+    push cx
+    mov cx, 10
+    mov bx, [temporalX]
+
+.drawPlayer1IconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 2
+    
+    inc bx
+    loop .drawPlayer1IconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawPlayer1IconRow
+    
+    popa
+
+;   <><><><><><><><><><>           PLAYER 1 GUI: LAPS          <><><><><><><><><><>
+
+drawPlayer1Laps:
+    pusha
+    
+    mov cx, [player1Laps]
+    jcxz .finishedPlayer1Laps
+    
+    mov word [temporalX], 26
+    mov word [temporalY], 14
+    mov si, cx
+
+.drawPlayer1LapPoint:
+    mov ax, [temporalY]
+    mov bx, 320
+    mul bx
+    add ax, [temporalX]
+    mov di, ax
+    
+    mov cx, 2
+.player1LapPointRows:
+    push cx
+    mov cx, 2
+    mov bx, di
+    
+.player1LapPointColumns:
+    mov byte [es:bx], 2
+    inc bx
+    loop .player1LapPointColumns
+    
+    add di, 320
+    pop cx
+    loop .player1LapPointRows
+    
+    add word [temporalX], 6
+    dec si
+    jnz .drawPlayer1LapPoint
+
+.finishedPlayer1Laps:
+    popa
+
+;   <><><><><><><><><><>           PLAYER 2 GUI: ICON          <><><><><><><><><><>
+
+drawPlayer2Icon:
+    pusha
+    
+    mov cx, 60
+    mov dx, 10
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 10
+
+.drawPlayer2IconRow:
+    push cx
+    mov cx, 10
+    mov bx, [temporalX]
+
+.drawPlayer2IconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 4
+    
+    inc bx
+    loop .drawPlayer2IconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawPlayer2IconRow
+    
+    popa
+
+;   <><><><><><><><><><>           PLAYER 2 GUI: LAPS          <><><><><><><><><><>
+
+drawPlayer2Laps:
+    pusha
+    
+    mov cx, [player2Laps]
+    jcxz .finishedPlayer2Laps
+    
+    mov word [temporalX], 76
+    mov word [temporalY], 14
+    mov si, cx
+
+.drawPlayer2LapPoint:
+    mov ax, [temporalY]
+    mov bx, 320
+    mul bx
+    add ax, [temporalX]
+    mov di, ax
+    
+    mov cx, 2
+.player2LapPointRows:
+    push cx
+    mov cx, 2
+    mov bx, di
+    
+.player2LapPointColumns:
+    mov byte [es:bx], 4
+    inc bx
+    loop .player2LapPointColumns
+    
+    add di, 320
+    pop cx
+    loop .player2LapPointRows
+    
+    add word [temporalX], 6
+    dec si
+    jnz .drawPlayer2LapPoint
+
+.finishedPlayer2Laps:
+    popa
+
+;   <><><><><><><><><><>            BOT 1 GUI: ICON            <><><><><><><><><><>
+
+drawBot1Icon:
+    pusha
+    
+    mov cx, 110
+    mov dx, 10
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 10
+
+.drawBot1IconRow:
+    push cx
+    mov cx, 10
+    mov bx, [temporalX]
+
+.drawBot1IconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 14
+    
+    inc bx
+    loop .drawBot1IconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawBot1IconRow
+    
+    popa
+
+;   <><><><><><><><><><>            BOT 1 GUI: LAPS            <><><><><><><><><><>
+
+drawBot1Laps:
+    pusha
+    
+    mov cx, [bot1Laps]
+    jcxz .finishedBot1Laps
+    
+    mov word [temporalX], 126
+    mov word [temporalY], 14
+    mov si, cx
+
+.drawBot1LapPoint:
+    mov ax, [temporalY]
+    mov bx, 320
+    mul bx
+    add ax, [temporalX]
+    mov di, ax
+    
+    mov cx, 2
+.bot1LapPointRows:
+    push cx
+    mov cx, 2
+    mov bx, di
+    
+.bot1LapPointColumns:
+    mov byte [es:bx], 14
+    inc bx
+    loop .bot1LapPointColumns
+    
+    add di, 320
+    pop cx
+    loop .bot1LapPointRows
+    
+    add word [temporalX], 6
+    dec si
+    jnz .drawBot1LapPoint
+
+.finishedBot1Laps:
+    popa
+
+;   <><><><><><><><><><>            BOT 2 GUI: ICON            <><><><><><><><><><>
+
+drawBot2Icon:
+    pusha
+    
+    mov cx, 160
+    mov dx, 10
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 10
+
+.drawBot2IconRow:
+    push cx
+    mov cx, 10
+    mov bx, [temporalX]
+
+.drawBot2IconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 5
+    
+    inc bx
+    loop .drawBot2IconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawBot2IconRow
+    
+    popa
+
+;   <><><><><><><><><><>            BOT 2 GUI: LAPS            <><><><><><><><><><>
+
+drawBot2Laps:
+    pusha
+    
+    mov cx, [bot2Laps]
+    jcxz .finishedBot2Laps
+    
+    mov word [temporalX], 176
+    mov word [temporalY], 14
+    mov si, cx
+
+.drawBot2LapPoint:
+    mov ax, [temporalY]
+    mov bx, 320
+    mul bx
+    add ax, [temporalX]
+    mov di, ax
+    
+    mov cx, 2
+.bot2LapPointRows:
+    push cx
+    mov cx, 2
+    mov bx, di
+    
+.bot2LapPointColumns:
+    mov byte [es:bx], 5
+    inc bx
+    loop .bot2LapPointColumns
+    
+    add di, 320
+    pop cx
+    loop .bot2LapPointRows
+    
+    add word [temporalX], 6
+    dec si
+    jnz .drawBot2LapPoint
+
+.finishedBot2Laps:
+    popa
+
+;   <><><><><><><><><><>            BOT 3 GUI: ICON            <><><><><><><><><><>
+
+drawBot3Icon:
+    pusha
+    
+    mov cx, 210
+    mov dx, 10
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 10
+
+.drawBot3IconRow:
+    push cx
+    mov cx, 10
+    mov bx, [temporalX]
+
+.drawBot3IconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 1
+    
+    inc bx
+    loop .drawBot3IconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawBot3IconRow
+    
+    popa
+
+;   <><><><><><><><><><>            BOT 3 GUI: LAPS            <><><><><><><><><><>
+
+drawBot3Laps:
+    pusha
+    
+    mov cx, [bot3Laps]
+    jcxz .finishedBot3Laps
+    
+    mov word [temporalX], 226
+    mov word [temporalY], 14
+    mov si, cx
+
+.drawBot3LapPoint:
+    mov ax, [temporalY]
+    mov bx, 320
+    mul bx
+    add ax, [temporalX]
+    mov di, ax
+    
+    mov cx, 2
+.bot3LapPointRows:
+    push cx
+    mov cx, 2
+    mov bx, di
+    
+.bot3LapPointColumns:
+    mov byte [es:bx], 1
+    inc bx
+    loop .bot3LapPointColumns
+    
+    add di, 320
+    pop cx
+    loop .bot3LapPointRows
+    
+    add word [temporalX], 6
+    dec si
+    jnz .drawBot3LapPoint
+
+.finishedBot3Laps:
+    popa
+
 ;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
-
-getRandomSpeed:
-    rdtsc
-    xor eax, edx
-    and eax, 0x07
-    inc eax
-
-    ; FILTERS EAX TO BE 1, 2, 4 OR 8
-
-    cmp eax, 3
-    mov ebx, 2
-    cmove eax, ebx
-
-    cmp eax, 5
-    mov ebx, 4
-    cmove eax, ebx
-
-    cmp eax, 6
-    mov ebx, 4
-    cmove eax, ebx
-
-    cmp eax, 7
-    mov ebx, 4
-    cmove eax, ebx
-
-    ret
 
 draw_Map:
 ; PLANTILLA PARA DIBUJAR PIXEL ROJO EN 0,0
@@ -108,17 +520,17 @@ drawBot1:
     
     mov cx, [bot1PositionX]
     mov dx, [bot1PositionY]
-    mov [tempX], cx
-    mov [temp], dx
+    mov [temporalX], cx
+    mov [temporalY], dx
     
     mov cx, 6
 .drawBot1Row:
     push cx
     mov cx, 6
-    mov bx, [tempX]
+    mov bx, [temporalX]
     
 .drawBot1Column:
-    mov ax, [temp]
+    mov ax, [temporalY]
     mov di, 320
     imul di
     add ax, bx
@@ -128,7 +540,7 @@ drawBot1:
     inc bx
     loop .drawBot1Column
     
-    inc word [temp]
+    inc word [temporalY]
     pop cx
     loop .drawBot1Row
     
@@ -171,6 +583,9 @@ updateBot1Position:
 
     cmp ax, 9
     je moveBot1ToCheckpoint10
+
+    cmp ax, 10
+    je moveBot1ToCheckpoint11
     
 
 ; BOT 1 - CHECKPOINT 1: (16,48)
@@ -436,7 +851,7 @@ moveBot1ToCheckpoint10:
     cmp ax, 176
     jne moveBot1ToCheckpoint10Y
 
-    mov word [bot1CurrentCheckpoint], 0
+    mov word [bot1CurrentCheckpoint], 10
 
     jmp done
 
@@ -449,6 +864,35 @@ moveBot1ToCheckpoint10X:
 
 moveBot1ToCheckpoint10Y:
     mov ax, 176      
+    cmp [bot1PositionY], ax
+    jl incrementBot1Y       
+    jg decreaseBot1Y       
+    jmp done
+
+; BOT 1 - CHECKPOINT 11: (16,112)
+
+moveBot1ToCheckpoint11:
+    mov ax, [bot1PositionX]
+    cmp ax, 16
+    jne moveBot1ToCheckpoint11X
+    mov ax, [bot1PositionY]
+    cmp ax, 112
+    jne moveBot1ToCheckpoint11Y
+
+    mov word [bot1CurrentCheckpoint], 0
+    inc dword [bot1Laps]
+
+    jmp done
+
+moveBot1ToCheckpoint11X:
+    mov ax, 16    
+    cmp [bot1PositionX], ax
+    jl incrementBot1X       
+    jg decreaseBot1X       
+    jmp done   
+
+moveBot1ToCheckpoint11Y:
+    mov ax, 112      
     cmp [bot1PositionY], ax
     jl incrementBot1Y       
     jg decreaseBot1Y       
@@ -481,17 +925,17 @@ drawBot2:
     
     mov cx, [bot2PositionX]
     mov dx, [bot2PositionY]
-    mov [tempX], cx
-    mov [temp], dx
+    mov [temporalX], cx
+    mov [temporalY], dx
     
     mov cx, 6
 .drawBot2Row:
     push cx
     mov cx, 6
-    mov bx, [tempX]
+    mov bx, [temporalX]
     
 .drawBot2Column:
-    mov ax, [temp]
+    mov ax, [temporalY]
     mov di, 320
     imul di
     add ax, bx
@@ -501,7 +945,7 @@ drawBot2:
     inc bx
     loop .drawBot2Column
     
-    inc word [temp]
+    inc word [temporalY]
     pop cx
     loop .drawBot2Row
     
@@ -544,7 +988,9 @@ updateBot2Position:
 
     cmp ax, 9
     je moveBot2ToCheckpoint10
-    
+
+    cmp ax, 10
+    je moveBot2ToCheckpoint11    
 
 ; BOT 2 - CHECKPOINT 1: (32,64)
 
@@ -809,7 +1255,7 @@ moveBot2ToCheckpoint10:
     cmp ax, 160
     jne moveBot2ToCheckpoint10Y
 
-    mov word [bot2CurrentCheckpoint], 0
+    mov word [bot2CurrentCheckpoint], 10
 
     jmp done
 
@@ -822,6 +1268,35 @@ moveBot2ToCheckpoint10X:
 
 moveBot2ToCheckpoint10Y:
     mov ax, 160
+    cmp [bot2PositionY], ax
+    jl incrementBot2Y       
+    jg decreaseBot2Y       
+    jmp done
+
+; BOT 2 - CHECKPOINT 11: (32,112)
+
+moveBot2ToCheckpoint11:
+    mov ax, [bot2PositionX]
+    cmp ax, 32
+    jne moveBot2ToCheckpoint11X
+    mov ax, [bot2PositionY]
+    cmp ax, 112
+    jne moveBot2ToCheckpoint11Y
+
+    inc dword [bot2Laps]
+    mov word [bot2CurrentCheckpoint], 0
+
+    jmp done
+
+moveBot2ToCheckpoint11X:
+    mov ax, 32   
+    cmp [bot2PositionX], ax
+    jl incrementBot2X       
+    jg decreaseBot2X       
+    jmp done   
+
+moveBot2ToCheckpoint11Y:
+    mov ax, 112
     cmp [bot2PositionY], ax
     jl incrementBot2Y       
     jg decreaseBot2Y       
@@ -855,17 +1330,17 @@ drawBot3:
     
     mov cx, [bot3PositionX]
     mov dx, [bot3PositionY]
-    mov [tempX], cx
-    mov [temp], dx
+    mov [temporalX], cx
+    mov [temporalY], dx
     
     mov cx, 6
 .drawBot3Row:
     push cx
     mov cx, 6
-    mov bx, [tempX]
+    mov bx, [temporalX]
     
 .drawBot3Column:
-    mov ax, [temp]
+    mov ax, [temporalY]
     mov di, 320
     imul di
     add ax, bx
@@ -875,7 +1350,7 @@ drawBot3:
     inc bx
     loop .drawBot3Column
     
-    inc word [temp]
+    inc word [temporalY]
     pop cx
     loop .drawBot3Row
     
@@ -918,6 +1393,9 @@ updateBot3Position:
 
     cmp ax, 9
     je moveBot3ToCheckpoint10
+
+    cmp ax, 10
+    je moveBot3ToCheckpoint11
     
 
 ; BOT 3 - CHECKPOINT 1: (48,72)
@@ -1183,7 +1661,7 @@ moveBot3ToCheckpoint10:
     cmp ax, 152
     jne moveBot3ToCheckpoint10Y
 
-    mov word [bot3CurrentCheckpoint], 0
+    mov word [bot3CurrentCheckpoint], 10
 
     jmp done
 
@@ -1196,6 +1674,35 @@ moveBot3ToCheckpoint10X:
 
 moveBot3ToCheckpoint10Y:
     mov ax, 152      
+    cmp [bot3PositionY], ax
+    jl incrementBot3Y       
+    jg decreaseBot3Y       
+    jmp done
+
+; BOT 3 - CHECKPOINT 11: (48,112)
+
+moveBot3ToCheckpoint11:
+    mov ax, [bot3PositionX]
+    cmp ax, 48
+    jne moveBot3ToCheckpoint11X
+    mov ax, [bot3PositionY]
+    cmp ax, 112
+    jne moveBot3ToCheckpoint11Y
+
+    inc dword [bot3Laps]
+    mov word [bot3CurrentCheckpoint], 0
+
+    jmp done
+
+moveBot3ToCheckpoint11X:
+    mov ax, 48   
+    cmp [bot3PositionX], ax
+    jl incrementBot3X       
+    jg decreaseBot3X       
+    jmp done   
+
+moveBot3ToCheckpoint11Y:
+    mov ax, 112      
     cmp [bot3PositionY], ax
     jl incrementBot3Y       
     jg decreaseBot3Y       
@@ -1224,6 +1731,7 @@ decreaseBot3Y:
 
 ;   <><><><><><><><><><><><><><><><><><><><>          FUNCTIONALITIES           <><><><><><><><><><><><><><><><><><><><>
 
+;   <><><><><><><><><><>          REFREASH GAME SCREEN         <><><><><><><><><><>
 refreshScreen:
     mov ax, 0xA000
     mov es, ax
@@ -1232,6 +1740,37 @@ refreshScreen:
     xor al, al
     rep stosb
     ret
+
+;   <><><><><><><><><><>      CALCULATES BOTS RANDOM SPEED     <><><><><><><><><><>
+
+getRandomSpeed:
+    rdtsc
+    xor eax, edx
+    and eax, 0x07
+    inc eax
+
+    ; FILTERS EAX TO BE 1, 2, 4 OR 8
+    ; SPEED POSIBILITIES: P(1)=1/8, P(2)=2/8, P(4)=4/8 AND P(8)=1/8
+
+    cmp eax, 3
+    mov ebx, 2
+    cmove eax, ebx
+
+    cmp eax, 5
+    mov ebx, 4
+    cmove eax, ebx
+
+    cmp eax, 6
+    mov ebx, 4
+    cmove eax, ebx
+
+    cmp eax, 7
+    mov ebx, 4
+    cmove eax, ebx
+
+    ret
+
+;   <><><><><><><><><><>             GRAPHIC DELAY             <><><><><><><><><><>
 
 delay:
     mov ah, 0x86
@@ -1246,12 +1785,22 @@ done:
 
 ;   <><><><><><><><><><><><><><><><><><><><>              VARIABLES             <><><><><><><><><><><><><><><><><><><><>
 
+;   <><><><><><><><><><>           PLAYERS VARIABLES           <><><><><><><><><><>
+player1PositionX dw 0
+player1PositionY dw 0
+player2PositionX dw 0
+player2PositionY dw 0
 bot1PositionX dw 0
 bot1PositionY dw 0
 bot2PositionX dw 0
 bot2PositionY dw 0
 bot3PositionX dw 0
 bot3PositionY dw 0
+
+player1Laps dw 0
+player2Laps dw 0
+
+;   <><><><><><><><><><>            BOTS VARIABLES             <><><><><><><><><><>
 
 bot1CurrentCheckpoint dw 0
 bot2CurrentCheckpoint dw 0
@@ -1261,8 +1810,17 @@ bot1Speed dw 0
 bot2Speed dw 0
 bot3Speed dw 0
 
-tempX dw 0
-temp dw 0
+bot1Laps dw 0
+bot2Laps dw 0
+bot3Laps dw 0
+
+;   <><><><><><><><><><>           TEMPORAL VARIABLES          <><><><><><><><><><>
+
+temporalX dw 0
+temporalY dw 0
 
 ;   <><><><><><><><><><><><><><><><><><><><>               HEADER               <><><><><><><><><><><><><><><><><><><><>
 ;   <><><><><><><><><><><><><><><><><><><><>                              <><><><><><><><><><><><><><><><><><><><>
+
+;   <><><><><><><><><><>               SUBHEADER               <><><><><><><><><><>
+;   <><><><><><><><><><>                              <><><><><><><><><><>
