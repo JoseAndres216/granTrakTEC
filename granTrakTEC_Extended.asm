@@ -45,6 +45,8 @@ main:
     mov [bot3Speed], ax
     mov word [bot3Laps], 0
 
+    mov word [winnerPlayer], 0
+
     mov word [timeLeft], 60
     mov byte [lastSecond], 0
 
@@ -96,6 +98,8 @@ drawGUI:
     jmp drawBot3Laps
 
     jmp drawLinearTimer
+
+    jmp drawWinnerPlayer
 
 ;   <><><><><><><><><><>            SEPARATION LINES           <><><><><><><><><><>
 
@@ -549,6 +553,163 @@ drawLinearTimer:
 
 .finishedTimerSeconds:
     popa
+
+;   <><><><><><><><><><><><><><><><><><><><>       WINNER PLAYER DRAWING        <><><><><><><><><><><><><><><><><><><><>
+
+drawWinnerPlayer:
+    jmp drawCheckeredFlagLeft
+
+    jmp drawCheckeredFlagRight
+
+    jmp drawWinnerPlayerIcon
+
+drawCheckeredFlagLeft:
+    pusha
+    
+    mov ah, 0Ch
+    mov al, 44
+    mov bh, 0
+    
+    mov cx, 218
+    mov dx, 55
+    
+    mov si, 5
+    
+.drawRowsLeft:
+    push cx
+    
+    test si, 1
+    jz .evenRowLeft
+    add cx, 4
+    
+.evenRowLeft:
+    mov di, 3
+    
+.drawSquaresLeft:
+    push cx
+    push dx
+    mov bp, 4
+    
+.drawSquaresRowsLeft:
+    push cx
+    mov bl, 4
+    
+.darwPixelsLeft:
+    int 10h
+    inc cx
+    dec bl
+    jnz .darwPixelsLeft
+    
+    pop cx
+    inc dx
+    dec bp
+    jnz .drawSquaresRowsLeft
+    
+    pop dx
+    pop cx
+    add cx, 8
+    dec di
+    jnz .drawSquaresLeft
+    
+    pop cx
+    add dx, 4
+    dec si
+    jnz .drawRowsLeft
+    
+    popa
+
+drawCheckeredFlagRight:
+    pusha
+    
+    mov ah, 0Ch
+    mov al, 44
+    mov bh, 0
+    
+    mov cx, 280
+    mov dx, 55
+    
+    mov si, 5
+    
+.drawRowsRight:
+    push cx
+    
+    test si, 1
+    jz .evenRowRight
+    add cx, 4
+    
+.evenRowRight:
+    mov di, 3
+    
+.drawSquaresRight:
+    push cx
+    push dx
+    mov bp, 4
+    
+.drawSquaresRowsRight:
+    push cx
+    mov bl, 4
+    
+.drawPixelsRight:
+    int 10h
+    inc cx
+    dec bl
+    jnz .drawPixelsRight
+    
+    pop cx
+    inc dx
+    dec bp
+    jnz .drawSquaresRowsRight
+    
+    pop dx
+    pop cx
+    add cx, 8
+    dec di
+    jnz .drawSquaresRight
+    
+    pop cx
+    add dx, 4
+    dec si
+    jnz .drawRowsRight
+    
+    popa
+
+drawWinnerPlayerIcon:
+    drawBot3WinnerIcon
+
+;   <><><><><><><><><><>         BOT 3 GUI: WINNER ICON        <><><><><><><><><><>
+
+drawBot3WinnerIcon:
+    pusha
+    
+    mov cx, 250
+    mov dx, 55
+    mov [temporalX], cx
+    mov [temporalY], dx
+    
+    mov cx, 20
+
+.drawBot3WinnerIconRow:
+    push cx
+    mov cx, 20
+    mov bx, [temporalX]
+
+.drawBot3WinnerIconColumn:
+    mov ax, [temporalY]
+    mov di, 320
+    imul di
+    add ax, bx
+    mov di, ax
+    mov byte [es:di], 1
+    
+    inc bx
+    loop .drawBot3WinnerIconColumn
+    
+    inc word [temporalY]
+    pop cx
+    loop .drawBot3WinnerIconRow
+    
+    popa
+
 
 ;   <><><><><><><><><><><><><><><><><><><><>            MAP DRAWING             <><><><><><><><><><><><><><><><><><><><>
 
@@ -2005,6 +2166,10 @@ bot3Speed dw 0
 bot1Laps dw 0
 bot2Laps dw 0
 bot3Laps dw 0
+
+;   <><><><><><><><><><>           WINNER VARIABLES            <><><><><><><><><><>
+
+winnerPlayer dw 0
 
 ;   <><><><><><><><><><>            TIME VARIABLES             <><><><><><><><><><>
 
